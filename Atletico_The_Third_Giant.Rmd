@@ -1,0 +1,655 @@
+---
+title: "Atletico From Darkness"
+author: "O.Contreras"
+date: "13/12/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+## **Introduction**
+
+Most would say football was born in England, others are able to date it back to Ancient China making it the oldest sport known to mankind. Today, it is the most popular and lucrative sport and has been so for many generations. Aside from England, Spain could arguably be considered to be the Football Capital of the World. When speaking of Spanish Football, people tend to only debate between two teams: Real Madrid and Barcelona. Though there are a people in Spain, more specifically in Madrid, that would argue there is another giant in sight.
+
+On April 26th, 1903, 3 students from Bilbao decided to start their own club while studying in Madrid. The already established club Athletic Bilbao wanted to start-up a power club to compete with Real Madrid and have a cross-town rivalry, or "Derby", in the capital. This team was first named Athletic Club Sucursal de Madrid, later renamed to Atletico de Madrid in 1947. Since the inaugural 1928-29 season of the Spanish league, Atletico Madrid have lifted the League Trophy 11 times. Most recently in the 2020-21 season.
+For the last 20 years there have been two teams dominating Spain. Real Madrid who hold a total of 34 league titles (7 in the last 20 years) and Barcelona who have seen glory 26 times (10 in the last 20 years). Meanwhile, Atletico de Madrid have lifted the League Trophy twice since the 2013-14 campaign. Though Atletico de Madrid has seen very little glory in its history, we are witnessing the making of a third Giant. This project is to give insight through data visualization to help prove that belief and convince the reader of such claim.  
+To explore this relation we will be utilizing data sets from Kaggle.com and transfermarkt.us for the data in the tables and the graphs.  
+
+## Packages 
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(gplots)
+library(knitr)
+```
+
+## Data Preparation
+```{r}
+# Three csv files are being 
+la_liga_results <- read.csv("../Final_Project/LaLiga_Matches_1995-2021.csv") #Data starting at 1995
+la_liga_2021 <- read.csv("../Final_Project/LaLiga20_21_Dataset.csv") #Data on the 20/21 campaign
+la_liga_winners <- read.csv("../Final_Project/La_Liga_Winners.csv") #Every winner since inaugural season 
+#View(la_liga_results)
+#view(la_liga_2021)
+#view(la_liga_winners)
+```
+
+```{r}
+## Our data set is limited, won't be using many columns.
+la_liga_results %>% select(Season, HomeTeam, AwayTeam, FTHG, FTAG, FTR) %>% glimpse()
+## FT stands for Full-time, HG is Home-Goals, AG is Away-Goals, FTR is Full-time result
+
+
+```
+
+
+>We start off with a table containing every League winner since the turn of the millennium. Some columns were not needed for this project. Any data regarding half-time results were disregarded; only names, and full-time results were used in the making of this project. 
+
+## Winnners from 2000-01 to 2020-21
+| Season | Champions | Runner-Up | Third-Place |
+| :----: | :------  | :------- | :--------- |
+| 2000-01 | Real Madrid | Deportivo La Coruna | Mallorca | 
+| 2001-02 | Valencia | Deportivo La Coruna | Reak Madrid |  
+| 2002-03 | Real Madrid | Real Sociedad |  Deportivo La Coruna |
+| 2003-04 | Valencia | Barcelona | Deportivo La Coruna | 
+| 2004-05 | Barcelona | Real Madrid | Villarreal | 
+| 2005-06 | Barcelona | Real Madrid | Valencia |
+| 2006-07 | Real Madrid | Barcelona | Sevilla |
+| 2007-08 | Real Madrid | Villarreal | Barcelona | 
+| 2008-09 | Barcelona | Real Madrid | Sevilla | 
+| 2009-10 | Barcelona | Real Madrid | Valencia |
+| 2010-11 | Barcelona | Real Madrid | Valencia |
+| 2011-12 | Real Madrid | Barcelona | Valencia |
+| 2012-13 | Barcelona | Real Madrid | Atletico de Madrid |
+| **2013-14** | **Atletico de Madrid** | **Barcelona** | **Real Madrid** |
+| 2014-15 | Barcelona | Real Madrid | Atletico de Madrid | 
+| 2015-16 | Barcelona | Real Madrid | Atletico de Madrid |
+| 2016-17 | Real Madrid | Barcelona | Atletico de Madrid | 
+| 2017-18 | Barcelona | Atletico de Madrid | Real Madrid | 
+| 2018-19 | Barcelona | Atletico de Madrid | Real Madrid |
+| 2019-20 | Real Madrid | Barcelona | Atletico de Madrid | 
+| **2020-21** | **Atletico de Madrid** | **Real Madrid** | **Barcelona** |
+
+
+
+>Data from the 2002-03 season will be looked at.  Prior data would seem pretty irrelevant to the research since the 1990s had a lot of champion outliers. No other team had this much consistency. Also, note that there is missing data for Atletico de Madrid for the 2000-01 & 2001-02 because they had been relegated in 2000 and did not play first division football until the 2002-03 season.
+
+```{r}
+laliga <- la_liga_results %>% filter(Season >= "2002-03")
+
+#Atletico Madrid Home & Away data
+AM_Home <- laliga %>% filter(Season >= "2002-03", HomeTeam == "Ath Madrid") 
+AM_Away <- laliga %>% filter(Season >= "2002-03", AwayTeam == "Ath Madrid")
+glimpse(AM_Home) #Note: Ath Madrid were promoted to the 1st division in 2002.
+
+#Real Madrid Home & Away data
+RM_Home <- laliga %>% filter(Season >= "2002-03", HomeTeam == "Real Madrid")
+RM_Away <- laliga %>% filter(Season >= "2002-03", AwayTeam == "Real Madrid")
+
+#Barcelona Home & Away data
+FCB_Home <- laliga %>% filter(Season >= "2002-03", HomeTeam == "Barcelona")
+FCB_Away <- laliga %>% filter(Season >= "2002-03", AwayTeam == "Barcelona")
+
+```
+
+>We could look at each previous champion individually and find an average on their goals scored, but what good is having scored 50 goals all season if you concede 40 goals that same season. That would not help our assumptions when looking for a correlation in the data. Therefore, we will be looking at the average goal difference (GD) of Real Madrid, Barcelona, and Atletico Madrid from their title winning seasons.
+
+```{r}
+#RM title winning seasons
+RM_Champs <- c("2000-01", "2002-03", "2006-07", 
+               "2007-08", "2011-12", "2016-17", "2019-20")
+
+RM_Home %>% filter(Season %in% RM_Champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTHG - FTAG), TotalHomeGD = sum(GD)) %>% 
+  select(HomeTeam, TotalHomeGD) %>% 
+  slice(1) %>% kable()
+
+RM_Away %>% filter(Season %in% RM_Champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTAG - FTHG), TotalAwayGD = sum(GD)) %>% 
+  select(AwayTeam, TotalAwayGD) %>% 
+  slice(1) %>% kable()
+
+#Barcelona winning seasons
+FCB_Champs <- c("2004-05", "2005-06", "2008-09", "2009-10", "2010-11",
+                "2012-13", "2014-15", "2015-16", "2017-18", "2018-19")
+
+FCB_Home %>% filter(Season %in% FCB_Champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTHG - FTAG), TotalHomeGD = sum(GD)) %>% 
+  select(HomeTeam, TotalHomeGD) %>% 
+  slice(1) %>% kable()
+
+FCB_Away %>% filter(Season %in% FCB_Champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTAG - FTHG), TotalAwayGD = sum(GD)) %>% 
+  select(AwayTeam, TotalAwayGD) %>% 
+  slice(1) %>% kable()
+
+#Atletico winning season 
+AM_champs <- c("2013-14", "2020-21")
+AM_Home %>% filter(Season %in% AM_champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTHG - FTAG), TotalHomeGD = sum(GD)) %>% 
+  select(HomeTeam, TotalHomeGD) %>% slice(1) %>% kable()
+
+AM_Away %>% filter(Season %in% AM_champs) %>% 
+  group_by(Season) %>% 
+  mutate(GD = (FTAG - FTHG), TotalAwayGD = sum(GD)) %>%  
+  select(AwayTeam, TotalAwayGD) %>% 
+  slice(1) %>% kable()
+
+```
+
+
+>Here we see each team with a table containing their respective title winning seasons. 
+Real Madrid's lowest goal difference ratings all came in their 2006-07 title winning season with GD of 14 at home, 12 on the road, and 26 overall making it the lowest ratings out of all 3 teams and out of the 19 seasons overall. 
+
+>Barcelona's lowest rating in goal difference at home came in the 2004-05 season where they had a GD of 28, their lowest on the road was the following season where they defended their title with a mere GD of 15. Their lowest GD for the season came in their first title winning season in 2004-05 and have obviously only improved from that. 
+
+>Atletico, as mentioned before, have seen very little glory. Though, when compared directly with Real Madrid's and Barcelona's earlier years Atletico seem to be mirroring their results. So one can only assume their numbers will have the same trajectory as the other two. 
+
+## Real Madrid
+| Title Season | Home GD | Away GD | Season GD | 
+| :----------- | :---------- | :---------- | :-------- |
+| 2000-01 | 38 | 3 | 41 |
+| 2002-03 | 30 | 14 | 44 |
+| 2006-07 | 14 | 12 | 26 | 
+| 2007-08 | 35 | 13 | 48 |
+| 2011-12 | 51 | 38 | 89 |
+| 2016-17 | 28 | 37 | 65 |
+| 2019-20 | 29 | 16 | 45 |
+| Average | 32.1 | 19 | 51.1 | 
+
+## Barcelona 
+| Title Season | Home GD | Away GD | Season GD | 
+| :----------- | :---------- | :---------- | :-------- |
+| 2004-05 | 28 | 16 | 44 |
+| 2005-06 | 30 | 15 | 45 |
+| 2008-09 | 47 | 23 | 70 |
+| 2009-10 | 46 | 28 | 74 |
+| 2010-11 | 36 | 38 | 74 |
+| 2012-13 | 48 | 27 | 75 |
+| 2014-15 | 53 | 36 | 89 |
+| 2015-16 | 53 | 30 | 83 |
+| 2017-18 | 42 | 28 | 70 |
+| 2018-19 | 34 | 20 | 54 | 
+| Average | 41.7 | 26.1 | 67.8 | 
+
+## Atletico Madrid
+| Title Season | Home GD | Away GD | Season GD | 
+| :----------- | :---------- | :---------- | :-------- |
+| 2013-14 | 39 | 12 | 51 | 
+| 2020-21 | 30 | 12 | 42 | 
+| Average | 34.5 | 12 | 46.5 | 
+
+
+
+>In this big picture graph, we can see each team's season goal difference (GD) from the 2002-03 season.
+
+```{r}
+
+##This is all of the years we are looking at.
+years <- c("2002-03","2003-04", "2004-05", "2005-06", "2006-07",
+           "2007-08", "2008-09", "2010-11", "2011-12",
+           "2012-13", "2013-14", "2014-15", "2015-16", 
+           "2016-17", "2017-18", "2018-19", "2019-20") 
+
+## The three teams
+teams <- c("Real Madrid", "Barcelona", "Ath Madrid")
+
+#All 3
+laliga %>% filter(HomeTeam %in% teams, Season %in% years) %>% 
+  group_by(Season, HomeTeam) %>% 
+  mutate(GD = FTHG - FTAG, TotalHomeGD = sum(GD)) %>% 
+  ggplot(aes(x = Season, y = TotalHomeGD, fill = HomeTeam)) + 
+  geom_col(position = "dodge") + 
+  coord_flip() +
+  labs(title = "Defending the Home Turf", 
+       x = "Season",
+       y = "Goal Difference")
+
+
+laliga %>% filter(AwayTeam %in% teams, Season %in% years) %>%
+  group_by(Season, AwayTeam) %>% 
+  mutate(GD = FTAG - FTHG, TotalAwayGD = sum(GD)) %>% 
+  ggplot(aes(x = Season, y = TotalAwayGD, fill = AwayTeam)) + 
+  geom_col(position = "dodge") + 
+  coord_flip() + 
+  labs(title = "Away from Home", 
+       x = "Season",
+       y = "Goal Difference")
+
+```
+
+>Now, if we combine all of the data from the tables above we can clearly see them next to each other. As noted before, Barcelona has won the league 10 times since the the year 2000, yet they have been the better team on 12 occasions. Real Madrid being the best team at home on 4 occasions, coming in close second 4 more times. Atletico Madrid have always been the lesser team out of the 3 in terms of goal difference at home. 
+
+>Looking at the away chart we see that Atletico Madrid were, for the most part, nonexistent when visiting other teams. In their first 8 seasons of first division football they had a negative goal difference. Looking back at the tables, no prior champion held a negative goal difference neither home or away. 
+
+```{r}
+home_data_03to20 <- laliga %>% 
+  filter(Season %in% years, HomeTeam %in% teams) %>% 
+  group_by(Season, HomeTeam) %>% 
+  mutate(GD = (FTHG - FTAG), TotalHomeGD = sum(GD)) %>% 
+  select(Season, HomeTeam,AwayTeam, FTHG, FTAG, GD, TotalHomeGD) 
+
+away_data_03to20 <- laliga %>% 
+  filter(Season %in% years, AwayTeam %in% teams) %>% 
+  group_by(Season, AwayTeam) %>% 
+  mutate(GD = (FTAG - FTHG), TotalAwayGD = sum(GD)) %>% 
+  select(Season, HomeTeam,AwayTeam, FTHG, FTAG, GD, TotalAwayGD) 
+
+home_data_03to20 %>% 
+  ggplot(aes(x = HomeTeam, y = TotalHomeGD, fill = HomeTeam)) + 
+  geom_col() + 
+  facet_wrap(~ Season) + 
+  coord_flip() + 
+  labs(title = "Home Goal Difference",
+       x = "Team",
+       y = "GD") 
+  
+away_data_03to20 %>% 
+  ggplot(aes(x = AwayTeam, y = TotalAwayGD, fill = AwayTeam)) + 
+  geom_col() + 
+  facet_wrap(~ Season) +
+  coord_flip() +
+  labs(title = "Away Goal Difference", 
+       x = "Team", 
+       y = "GD")
+```
+
+>One big graph can be tricky to read and a little overwhelming, so let us separate them by season. As we can see, Atletico's numbers home and away numbers in terms of goal difference seemed to increase around 2012. What exactly happened in 2012? Well, since their promotion to the first division, Atletico have seen 8 difference managers on 9 occasions. It was not until the club appointed a rather young Argentine by the name of Diego "El Cholo" Simeone. Simeone had actually played for Atletico Madrid between 1994 and 1997. After hanging up his boots in 2006, Simeone won the Argentine Primera Division in his first season as a manager with Estudiantes La Plata in 2006 and then again in 2008 only this time managing River Plate. Two titles in his first 5 years as a manager was enough to convince Atletico that he was the man they needed. Taking over a distressed team mid season is no easy task for any manager. It was not until his first full season as manager that real change was seen. We can see in the charts that Atletico started locking locked down their defense at home and were starting to be a real threat when visiting other teams. 
+
+
+## So, how impactful was this "Cholo" Effect?? 
+```{r}
+teams <- c("Ath Madrid", "Real Madrid", "Barcelona")
+b4_simeone <- c("2002-03", "2003-04", "2004-05", "2005-06",
+                "2006-07", "2007-08", "2008-09", "2010-11", "2011-12")
+after_simeone <- c("2012-13", "2013-14", "2014-15", "2015-16",
+                   "2016-17", "2017-18", "2018-19", "2019-20", "2020-21")
+
+laliga %>% group_by(HomeTeam, Season) %>% 
+  filter(HomeTeam %in% teams, Season %in% b4_simeone) %>% 
+  tally(FTHG > FTAG) %>% 
+  ggplot(aes(x = HomeTeam, y = n, fill = HomeTeam)) +
+  geom_col() +
+  facet_wrap(~ Season) +
+  labs(title = "Home Wins Before Simeone",
+           x = "Team",
+           y = "Number of Wins") + 
+  coord_flip()
+
+
+laliga %>% group_by(HomeTeam, Season) %>% 
+  filter(HomeTeam %in% teams, Season %in% after_simeone) %>% 
+  tally(FTHG > FTAG) %>% 
+  ggplot(aes(x = HomeTeam, y = n, fill = HomeTeam)) +
+  geom_col() +
+  facet_wrap(~ Season) +
+  labs(title = "Home Wins After Simeone",
+           x = "Team",
+           y = "Number of Wins") + 
+  coord_flip()
+```
+
+>Before Simeone, Atletico failed to win a minimum of 10 home games in a season on 3 occasions. 
+>After Simeone, not once has Atletico failed to win at least 10 games in a given season.
+
+```{r}
+b4_simeone <- c("2002-03", "2003-04", "2004-05", "2005-06", "2006-07", "2007-08", "2008-09", "2010-11", "2011-12")
+teams <- c("Ath Madrid", "Real Madrid", "Barcelona")
+
+laliga %>% group_by(AwayTeam, Season) %>% 
+  filter(AwayTeam %in% teams, Season %in% b4_simeone) %>% 
+  tally(FTAG > FTHG) %>% 
+  ggplot(aes(x = AwayTeam, y = n, fill = AwayTeam)) +
+  geom_col() +
+  facet_wrap(~ Season) +
+  labs(title = "Away Wins Before Simeone",
+           x = "Team",
+           y = "Number of Wins") + 
+  coord_flip()
+
+laliga %>% group_by(AwayTeam, Season) %>% 
+  filter(AwayTeam %in% teams, Season %in% after_simeone) %>% 
+  tally(FTAG > FTHG) %>% 
+  ggplot(aes(x = AwayTeam, y = n, fill = AwayTeam)) +
+  geom_col() +
+  facet_wrap(~ Season) +
+  labs(title = "Away Wins After Simeone",
+           x = "Team",
+           y = "Number of Wins") + 
+  coord_flip()
+```
+
+```{r}
+#Home Win %       19 home games in 9 seasons = 171 home games
+laliga %>% filter(HomeTeam %in% teams, Season %in% b4_simeone) %>% 
+  group_by(HomeTeam) %>% tally(FTHG > FTAG) %>% mutate("Home Win %" = (n/171)*100) %>% kable()
+
+laliga %>% filter(HomeTeam %in% teams, Season %in% after_simeone) %>% 
+  group_by(HomeTeam) %>% tally(FTHG > FTAG) %>% mutate("Home Win %" = (n/171)*100) %>% kable()
+
+#Away Win %
+laliga %>% filter(AwayTeam %in% teams, Season %in% b4_simeone) %>% 
+  group_by(AwayTeam) %>% tally(FTAG > FTHG) %>% mutate("Away Win %" = (n/171)*100) %>% kable()
+
+laliga %>% filter(AwayTeam %in% teams, Season %in% after_simeone) %>% 
+  group_by(AwayTeam) %>% tally(FTAG > FTHG) %>% mutate("Away Win %" = (n/171)*100) %>% kable()
+```
+
+>In 9 seasons, between their promotion back to the first division and the appoint of Diego Simeone, Atletico had only managed to win half of their games. 19 home games in a season in 9 different seasons runs up a total of 171 home games, and Atletico had a mere 53.2 home win percentage. Now, after 9 seasons of being in charge, Atletico have basically only lost one game every four games. 
+
+>Every team plays a total of 38 games per season. 19 at home and 19 away. Atletico were winning up to 15 home games per season. They went from winning a couple of games to losing a couple of games. As for away games, Atletico would see as few as 2 wins away from home. Not once did they reach 10 away wins. After Simeone's appointment, Atletico were starting to starting to raise eyebrows when the opponents would see the upcoming fixture. 
+
+
+```{r}
+laliga %>% filter(HomeTeam == "Ath Madrid", Season %in% b4_simeone) %>% 
+  ggplot(aes(x = FTHG, y = FTAG)) +
+  geom_density_2d_filled() +
+  labs(title = "Atletico vs Opponent Final Score Density",
+       subtitle = "Before Simeone (at home)",
+       x = "Atletico's Score", 
+       y = "Opponent's Score")
+
+laliga %>% filter(HomeTeam == "Ath Madrid", Season %in% after_simeone) %>% 
+  ggplot(aes(x = FTHG, y = FTAG)) +
+  geom_density_2d_filled() +
+  labs(title = "Atletico vs Opponent Final Score Density",
+       subtitle = "After Simeone (at home)",
+       x = "Atletico's Score", 
+       y = "Opponent's Score")
+
+laliga %>% filter(AwayTeam == "Ath Madrid", Season %in% b4_simeone) %>% 
+  ggplot(aes(x = FTAG, y = FTHG)) +
+  geom_density_2d_filled() +
+  labs(title = "Atletico vs Opponent Final Score Density",
+       subtitle = "Before Simeone (away)",
+       x = "Atletico's Score", 
+       y = "Opponent's Score")
+
+laliga %>% filter(AwayTeam == "Ath Madrid", Season %in% after_simeone) %>% 
+  ggplot(aes(x = FTAG, y = FTHG)) +
+  geom_density_2d_filled() +
+  labs(title = "Atletico vs Opponent Final Score Density",
+       subtitle = "After Simeone (away)",
+       x = "Atletico's Score", 
+       y = "Opponent's Score")
+
+```
+
+>In this filled density graph we can see that before Diego Simeone, Atletico tended to tie at home and more often than not lose while on the road. After Simeone's appointment, a shift is noted in Atletico's favor with a handful of draws just like before, but with more wins to make up for it.  
+
+## Did You Know!? 
+
+```{r}
+spending_table <- tibble("Season" = c("02/03", "03/04", "04/05", "05/06", "06/07", "07/08", "08/09", "09/10",
+                                "10/11", "11/12", "12/13", "13/14", "14/15", "15/16", "16/17", "17/18", "18/19",
+                                "19/20", "20/21"),
+                   "Ath_Madrid (million)" = c(34.32, 10.78, 19.03, 29.15, 62.84, 88.55, 29.15, 18.98,
+                                                  37.46, 
+                                        93.72, 4.95, 39.70, 158.79, 130.90, 86.68, 105.16, 184.25, 
+                                        269.83, 97.90),
+                   "Barcelona (million)" = c(20.90, 48.24, 86.35, 0.00, 34.10, 75.35, 105.60, 124.85,
+                                                 79.75, 66.00,
+                                       36.30, 11.10, 183.39, 56.10, 137.23, 412.61, 155.21, 331.10, 123.20),
+                   "Real_Madrid (millon)" = c(49.50, 41.25, 64.57, 98.45, 113.30, 129.80, 90.42, 284.35,
+                                                  102.30, 61.60, 42.35, 193.05, 138.60, 93.94, 33.00, 44.55, 
+                                                  179.03, 391.05, 0.00))
+
+kable(spending_table)
+```
+
+| **Total** | **1.5B** | **2.18B** | **2.15B** |
+
+
+```{r}
+
+# A data frame created to display the spending table on a graph. 
+
+spending_data_frame <- data.frame("Season" = c("02/03","02/03","02/03", "03/04","03/04","03/04", 
+                        "04/05","04/05","04/05", "05/06","05/06","05/06", 
+                        "06/07","06/07","06/07", "07/08","07/08","07/08", 
+                        "08/09","08/09","08/09", "09/10","09/10","09/10",
+                        "10/11","10/11","10/11", "11/12","11/12","11/12",
+                        "12/13","12/13","12/13", "13/14","13/14","13/14",
+                        "14/15","14/15","14/15", "15/16","15/16","15/16",
+                        "16/17","16/17","16/17", "17/18","17/18","17/18",
+                        "18/19","18/19","18/19", "19/20","19/20","19/20",
+                        "20/21","20/21","20/21"), 
+           "Team" = c("Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid",
+                      "Atletico", "Barcelona", "Real Madrid"),
+           "Spending_million" = c(34.32, 20.90, 49.50, 
+                                 10.78, 48.24, 41.25, 
+                                 19.03, 86.35, 64.57,
+                                 29.15, 0.00, 98.45, 
+                                 62.84, 34.10, 113.30,
+                                 88.55, 75.35, 129.80,
+                                 29.15, 105.60, 90.42,
+                                 18.98, 124.85, 284.35,
+                                 37.46, 79.75, 102.30, 
+                                 93.72, 66.00, 61.60,
+                                 4.95, 36.30, 42.35,
+                                 39.70, 11.10, 193.05,
+                                 158.79, 183.39, 138.60, 
+                                 130.90, 56.10, 93.94,
+                                 86.68, 137.23, 33.00,
+                                 105.16, 412.61, 44.55,
+                                 184.25, 155.21, 179.03, 
+                                 269.83, 331.10, 391.05,
+                                 97.90, 123.20, 0)
+           )
+
+spending_data_frame %>% 
+  ggplot(aes(x = Season, y = Spending_million, color = Team)) +
+  geom_point() + geom_smooth()
+
+```
+
+
+>Since Atletico's promotion to the first division, they have spent a total a total of about 1.5 billion dollars. Most of Atletico's big spending came after seeing success, meaning appointing Simeone.Meanwhile, in that same time span, their cross town rivals have spent 2.15 Billion and Barcelona have spent 2.18 Billion dollars (converted from euros) and some of those shopping sprees came after unsuccessful seasons. 
+>Since Simeone's take over, Atletico has invested almost 1.1 Billion Dollars, Barcelona have invested 1.5 Billion dollars, and Real Madrid have invested 922 million dollars. That means that Atletico had only invested about 400 million prior to Simeone, while Barcelona and Real Madrid had invested 680 million and 1.23 Billions dollars, respectively. 
+
+
+## So Who Has The Best Return on Investment??
+
+>Here we have grabbed data from transfermarkt.us to create data frames with Real Madrid's, Atletico Madrid's, and Barcelona's "today's most valuable lineups". 
+
+```{r}
+## Multiple individual data frames were created using data from transfermarkt.us
+
+Atleti_MV_Lineup <- data.frame("#" = 1:11,
+           "Player" = c("Jan Oblack", "Jose Maria Jimenez", "Mario Hermoso", 
+                        "Renan Lodi", "Marcos Llorente", "Koke", 
+                        "Rodrigo de Paul", "Joao Felix", "Antoine Griezmann",
+                        "Angel Correa", "Yannick Carrasco"), 
+           "Market_Value_M" = c(77.00, 66.00, 38.50, 27.50, 88.00, 66.00, 
+                                44.00, 77.00, 55.00, 44.00, 44.00))
+
+Barca_MV_Lineup <- data.frame("#" = 1:11,
+           "Player" = c("Marc-Andre ter Stegen", "Sergino Dest", 
+                        "Ronald Araujo", "Eric Garcia", "Clement Lenglet",
+                        "Frenkie de Jong", "Pedri", "Gavi", "Ansu Fati", 
+                        "Ousmane Dembele", "Memphis Depay"),
+           "Market_Value_M" = c(60.50, 33.00, 27.50, 22.00, 19.80, 99.00,
+                                88.00, 27.50, 66.00, 55.00, 49.50))
+
+Real_MV_Lineup <- data.frame("#" = 1:11, 
+           "Player" = c("Thibaut Courtois", "David Alaba", "Ferland Mendy", 
+                        "Eder Militao", "Casemiro", "Federico Valverder", 
+                        "Eduardo Camavinga", "Toni Kroos", "Vinicius Junior",
+                        "Rodrygo", "Marco Asensio"),
+           "Market_Value_M" = c(66.00, 60.50, 55.00, 44.00, 77.00, 71.50, 
+                                60.50, 33.00, 55.00, 38.50, 38.50))
+
+```
+
+```{r}
+paste("Atletico's most valuable lineup is worth", sum(Atleti_MV_Lineup$Market_Value_M), "million")
+paste("Barcelona's most valuable lineup is worth", sum(Barca_MV_Lineup$Market_Value_M), "million")
+paste("Real Madrid's most valuable lineup is worth",sum(Real_MV_Lineup$Market_Value_M), "million")
+```
+
+>Ironically, Atletico's most valuable squad today is worth more than Barcelona's and Real Madrid's. Safe to say Atletico is shopping in the same aisle as Barcelona and Real Madrid. One major difference, Barcelona and Real Madrid shop for expensive designer whilst Atletico love to shop bargains. 
+
+## Purchase vs Market Value
+
+> Here are tables displayed to show how much each team's most valuable lineup cost vs how much they are worth now. 
+
+```{r} 
+Atleti_MV_Lineup <- tibble( "Player" = c("Jan Oblack", "Jose Maria Jimenez",
+                                         "Mario Hermoso", "Renan Lodi",
+                                         "Marcos Llorente", "Koke", 
+                                         "Rodrigo de Paul", "Joao Felix", 
+                                         "Antoine Griezmann", "Angel Correa", 
+                                         "Yannick Carrasco"), 
+                            "Purchased_For_M" = c(17.6, 1.09, 27.50, 22.66, 
+                                                  33.00, "Youth Academy", 
+                                                  38.50,
+                                                  139.92, 59.40, 
+                                                  11.55, 16.5),
+                            "Market_Value_M" = c(77.00, 66.00, 38.50, 
+                                                 27.50, 88.00, 66.00, 44.00,
+                                                 77.00, 55.00, 44.00, 44.00))
+
+Barca_MV_Lineup <- tibble("Player" = c("Marc-Andre ter Stegen", "Sergino Dest", 
+                                       "Ronald Araujo", "Eric Garcia",
+                                       "Clement Lenglet", 
+                                       "Frenkie de Jong", "Pedri", "Gavi",
+                                       "Ansu Fati",
+                                       "Ousmane Dembele", "Memphis Depay"),
+                          "Purchased_For_M" = c(13.20, 23.10, "Youth Academy",
+                                                "Free Transfer", 39.49, 
+                                                94.60, 22.00, "Youth Academy",
+                                                "Youth Academy", 148.50,
+                                                "Free Transfer"),
+                          "Market_Value_M" = c(60.50, 33.00, 27.50, 22.00,
+                                               19.80,
+                                               99.00, 88.00, 27.50, 66.00,
+                                               55.00, 49.50))
+
+Real_MV_Lineup <- tibble("Player" = c("Thibaut Courtois", "David Alaba",
+                                      "Ferland Mendy", 
+                                      "Eder Militao", "Casemiro",
+                                      "Federico Valverder", 
+                                      "Eduardo Camavinga", "Toni Kroos", 
+                                      "Vinicius Junior", 
+                                      "Rodrygo", "Marco Asensio"),
+                         "Purchased_For_M" = c(38.50, "Free Trandfer", 52.80,
+                                               55.00, 6.60, "Youth Academy", 
+                                               34.10, 27.50, 49.50,
+                                               49.50, 4.29), 
+                         "Market_Value_M" = c(66.00, 60.50, 55.00, 44.00, 
+                                             77.00, 71.50, 60.50, 33.00, 
+                                             55.00, 38.50, 38.50))
+
+kable(Atleti_MV_Lineup)
+kable(Barca_MV_Lineup)
+kable(Real_MV_Lineup)
+```
+
+>Both Barcelona and Real Madrid's most valuable starting line-ups consists of a lot of free tranfers and academy products. So where exactly is all the money they splurge on front cover players? 
+
+
+## Fun Facts: 
+
+>In 2013, 2010 World Cup winner David Villa was let go from Barcelona for being "too old". He then signed for Atletico Madrid for the 2013/14 season -- Simeone's first title as Atletico's manager. 
+
+>In 2020, World Class striker Luis Suarez was given the boot by Barcelona's incoming manager Ronald Koeman also for being also "too old" as well as "fat". Like David Villa, Luis Suarez signed with Atletico for the 2020/21 season -- Simeone's second title as Atletico's manager. 
+
+
+## La Liga 20/21 Standings
+```{r}
+## Now its time to look at the most reason season and compare correlations
+
+laliga_2021 <- la_liga_2021 %>% 
+  mutate("Team_Goals" = Team_full.Goals, 
+  "Opponent_Goals" = opponent_full.Goals) %>% 
+  select(Team, Opponent, where., Team_Goals, 
+         Opponent_Goals, Full_Result, Full_points)
+
+
+laliga_2021 %>% group_by(Team) %>% tally(Team_Goals) %>% 
+  ggplot(aes(x = reorder(Team, n), y = n)) +
+  geom_col(fill = "dark blue", color = "white") +
+  theme_classic() +
+  labs(title = "La Liga 20/21 Goals by Team",
+       x = "Teams",
+       y = "Goals") +
+  coord_flip()
+
+laliga_2021 %>% group_by(Team) %>% tally(Opponent_Goals) %>% 
+  ggplot(aes(x = reorder(Team, n), y = n)) +
+  geom_col(fill = "dark orange", color = "white") +
+  theme_classic() +
+  labs(title = "La Liga 20/21 Goals Against",
+       x = "Teams",
+       y = "Goals") +
+  coord_flip()
+```
+
+>With these two charts many things could be seen. 
+First, we can see that Barcelona did indeed score the most goals, finding the back the back of the net on 85 occasions. Aside from their 85 goals, they conceded 38 goals. A goal difference of 47 is not too bad, it is actually a better result than 2 of their 10 winning seasons. 
+Second, we see Real Madrid bagged in a total of 67 goals and conceded 28 goals putting them at a goal difference of 39. 
+Lastly, Atletico Madrid also scored 67 goals, though they only conceded 25 goals giving them a goal difference of 42. 
+
+
+```{r}
+## Here are the final standings for the season
+
+laliga_2021 %>% group_by(Team) %>% tally(Full_points) %>% arrange(desc(n)) %>%
+  ggplot(aes(x = reorder(Team, n), y = n)) +
+  geom_col(fill = "dark red", color = "white") +
+  theme_classic() +
+  labs(title = "La Liga 20/21 Season Standings",
+       x = "Teams",
+       y = "Points") +
+  coord_flip()
+```
+
+>These are the final standings for the 2020/21 season. Barcelona placed 3rd even after scoring 85 goals?? 
+
+
+```{r}
+## Tables displaying each of the three team's loss of points.
+
+la_liga_2021 %>% filter(Team == "Barcelona", opponent_full.Goals >= Team_full.Goals) %>% select(Team,Opponent, where., Team_full.Goals, opponent_full.Goals, Full_Result, Full_points) %>% kable()
+
+la_liga_2021 %>% filter(Team == "Ath Madrid", opponent_full.Goals >= Team_full.Goals)  %>% select(Team,Opponent, where., Team_full.Goals, opponent_full.Goals, Full_Result, Full_points) %>% kable()
+
+la_liga_2021 %>% filter(Team == "Real Madrid", opponent_full.Goals >= Team_full.Goals, ) %>% select(Team,Opponent, where., Team_full.Goals, opponent_full.Goals, Full_Result, Full_points) %>% kable()
+
+```
+
+>Barcelona tied on 7 occasions and tasted defeat just as many times. With 7 ties and 7 defeats, they dropped a total of 35 points. 
+Atletico tied 8 times, but lost on 4 occasions. Losing 4 games and tying 8 would only cost you 28 points. 
+Real Madrid saw a draw 9 times and lost only 4 times. Dropping a total of 30 points. Two less than the actual champions, Atletico de Madrid. 
+
+
+## **Conclusion**
+
+>Atletico emerged from its own shadows, even with the fact that their very own president had once nicknamed them "El Pupas" which translates to "The Jinxed Ones". Decades after being considered one of Spain's worst clubs, Atletico has one of the best return on investment on their lineup with the least amount of money spent. Diego "Cholo" Simeone locked down the defense and having the best defensive stats in the league proved that defense does indeed win championships.
+With Simeone in charge, Atletico has allowed the least number of goals while having the 2nd most goals scored and increased their home and away wins in the 2020/21 season earning them their 11th Spanish title, Simeone's 2nd.  
+Using these graphs and the information above, we can conclude that Atletico Madrid is considered the third “giant”.
+
